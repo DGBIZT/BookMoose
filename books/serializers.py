@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Book
-
+from authors.models import Author
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -35,6 +35,14 @@ class BookSerializer(serializers.ModelSerializer):
         source='created_by.email',
         read_only=True,
         help_text="Email пользователя, добавившего книгу"
+    )
+
+    author = serializers.PrimaryKeyRelatedField(
+        queryset=Author.objects.all(),  # Укажите корректный путь к модели
+        many=True,  # Обязательный параметр для M2M
+        allow_null=False,  # Если авторы обязательны
+        required=True,  # Если авторы обязательны при создании
+        help_text="Список ID авторов (модель Author)"
     )
 
     # Форматирование дат
@@ -74,7 +82,6 @@ class BookSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by']  # created_by задаётся в perform_create
         extra_kwargs = {
-            'author': {'write_only': True},
         #     'publisher': {'write_only': True},
         #     'genre': {'write_only': True},
         #     'series': {'write_only': True},
@@ -107,6 +114,9 @@ class BookSerializer(serializers.ModelSerializer):
         - добавлять динамические поля.
         """
         rep = super().to_representation(instance)
+        # Заменяем ID авторов на их имена (пример)
+        if 'author' in rep and instance.author.exists():
+            rep['author'] = [str(author) for author in instance.author.all()]
         return rep
 
     def create(self, validated_data):

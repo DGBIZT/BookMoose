@@ -15,11 +15,10 @@ class Book(models.Model):
         help_text='До 255 символов'
     )
     # Автор
-    author = models.ForeignKey(
+    author = models.ManyToManyField(
         'authors.Author',  # Название модели (можно строку)
-        on_delete=models.CASCADE,  # Обязательный параметр
-        verbose_name='Автор',
-        help_text='ФИО автора',
+        verbose_name='Авторы',
+        help_text='ФИО автора или список авторов книги',
         related_name='books', # Позволяет: author.books.all()
     )
 
@@ -144,12 +143,16 @@ class Book(models.Model):
         ordering = ['title']
         indexes = [
             models.Index(fields=['title']),
-            models.Index(fields=['author']),
             models.Index(fields=['isbn']),
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.author.get_short_name()}, {self.publication_year})"
+        author_names = ", ".join([
+            author.get_short_name() for author in self.author.all()
+        ])
+        if not author_names:
+            author_names = "Нет авторов"
+        return f"{self.title} ({author_names}, {self.publication_year})"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

@@ -11,7 +11,7 @@ class BookAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'genre',
-        'author',
+        'author_list',
         'created_by',
         'publication_year',
         'pages',
@@ -109,3 +109,10 @@ class BookAdmin(admin.ModelAdmin):
             # Например, показывать только активных пользователей
             kwargs["queryset"] = User.objects.filter(is_active=True)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    # Метод для отображения авторов в list_display
+    def author_list(self, obj):
+        return ", ".join([str(author) for author in obj.author.all()])
+
+    author_list.short_description = 'Авторы'  # Заголовок столбца
+    author_list.admin_order_field = 'author__last_name'  # Сортировка по фамилии (опционально)
