@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'books',
     'authors',
     'genres',
+    'loans',
 ]
 
 MIDDLEWARE = [
