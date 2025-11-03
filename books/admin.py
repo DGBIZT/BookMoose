@@ -10,6 +10,8 @@ class BookAdmin(admin.ModelAdmin):
     # Основные настройки отображения
     list_display = (
         'title',
+        'genre',
+        'author',
         'created_by',
         'publication_year',
         'pages',
@@ -43,6 +45,8 @@ class BookAdmin(admin.ModelAdmin):
         ('Основные данные', {
             'fields': (
                 'title',
+                'genre',
+                'author',
                 'created_by',
                 'isbn',
                 'publication_year',
