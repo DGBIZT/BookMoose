@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'books',
     'authors',
-
+    'genres',
 ]
 
 MIDDLEWARE = [

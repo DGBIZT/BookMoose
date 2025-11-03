@@ -58,15 +58,16 @@ class Book(models.Model):
         verbose_name='Год издания',
         help_text='Год выпуска (1450–2030)'
     )
-    # # Жанр
-    # genre = models.ForeignKey(
-    #     'Genre',
-    #     on_delete=models.SET_NULL,
-    #     blank=True,
-    #     null=True,
-    #     verbose_name='Жанр',
-    #     help_text='Жанр книги'
-    # )
+    # Жанр
+    genre = models.ForeignKey(
+        'genres.Genre',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name='Жанр',
+        help_text='Жанр книги'
+    )
+
     # Количество страниц
     pages = models.PositiveIntegerField(
         verbose_name='Количество страниц',

@@ -60,7 +60,7 @@ class BookSerializer(serializers.ModelSerializer):
             'isbn',
             # 'publisher',
             "publication_year",
-            # 'genre',
+            'genre',
             'pages',
             'language',
             'description',

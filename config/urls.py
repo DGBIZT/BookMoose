@@ -38,6 +38,7 @@ urlpatterns = [
     path('users/', include('users.urls', namespace='users')),
     path('books/', include('books.urls', namespace='books')),
     path('authors/', include('authors.urls', namespace='authors')),
+    path('genres/', include('genres.urls', namespace='genres')),
 
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
