@@ -55,21 +55,17 @@ class BookSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'author',
-            'author_name',
             'created_by',
             'created_by_email',
             'isbn',
-            'publisher',
-            'publisher_name',
-            'publication_year',
-            'genre',
-            'genre_name',
+            # 'publisher',
+            "publication_year",
+            # 'genre',
             'pages',
             'language',
             'description',
             'edition',
-            'series',
-            'series_name',
+            # 'series',
             'available_copies',
             'total_copies',
             'cover_image',
@@ -77,12 +73,12 @@ class BookSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by']  # created_by задаётся в perform_create
-        # extra_kwargs = { Как создам все приложения раскрыть комментарий
-        #     'author': {'write_only': True},
+        extra_kwargs = {
+            'author': {'write_only': True},
         #     'publisher': {'write_only': True},
         #     'genre': {'write_only': True},
         #     'series': {'write_only': True},
-        # }
+        }
 
     def validate(self, data):
         """

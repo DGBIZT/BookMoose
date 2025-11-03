@@ -36,9 +36,9 @@ class BookViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         При создании автоматически привязываем книгу к текущему пользователю.
-        Предполагаем, что в модели Book есть поле `author` (ForeignKey на User).
+        В модели Book есть поле `created_by` (ForeignKey на User).
         """
-        serializer.save(author=self.request.user)
+        serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
         """

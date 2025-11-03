@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth import get_user_model
+from django.core.validators import FileExtensionValidator
 
 User = get_user_model() # Возвращает CustomUser
 
@@ -13,13 +14,14 @@ class Book(models.Model):
         verbose_name='Название книги',
         help_text='До 255 символов'
     )
-    # # Автор
-    # author = models.ForeignKey(
-    #     'Author',  # Название модели (можно строку)
-    #     on_delete=models.CASCADE,  # Обязательный параметр
-    #     verbose_name='Автор',
-    #     help_text='ФИО автора'
-    # )
+    # Автор
+    author = models.ForeignKey(
+        'authors.Author',  # Название модели (можно строку)
+        on_delete=models.CASCADE,  # Обязательный параметр
+        verbose_name='Автор',
+        help_text='ФИО автора',
+        related_name='books', # Позволяет: author.books.all()
+    )
 
     # Пользователь системы, который создал/управляет записью
     created_by = models.ForeignKey(
@@ -116,11 +118,11 @@ class Book(models.Model):
         help_text='Общее количество копий в фонде'
     )
     # URL изображения обложки
-    cover_image = models.URLField(
+    cover_image = models.ImageField(
         blank=True,
         null=True,
-        verbose_name='Ссылка на обложку',
-        help_text='URL изображения обложки'
+        verbose_name='Обложка',
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif'])]
     )
 
     # Автоматические поля
@@ -139,14 +141,14 @@ class Book(models.Model):
         verbose_name = 'Книга'
         verbose_name_plural = 'Книги'
         ordering = ['title']
-        # indexes = [  Как создам все приложения раскрыть коментарий
-        #     models.Index(fields=['title']),
-        #     models.Index(fields=['author']),
-        #     models.Index(fields=['isbn']),
-        # ]
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['author']),
+            models.Index(fields=['isbn']),
+        ]
 
     def __str__(self):
-        return f"{self.title} ({self.author}, {self.publication_year})"
+        return f"{self.title} ({self.author.get_short_name()}, {self.publication_year})"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
