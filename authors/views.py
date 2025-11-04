@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from .models import Author
+from .paginators import CustomPagination
 from .serializers import AuthorSerializer
 from .permissions import AuthorPermission
 
@@ -18,6 +19,7 @@ class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
     serializer_class = AuthorSerializer
     permission_classes = [AuthorPermission]
+    pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
     # Поля для фильтрации (точная фильтрация)
