@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from .models import Genre
+from .paginators import CustomPagination
 from .serializers import GenreSerializer
 from .permissions import GenrePermission
 
@@ -18,6 +19,7 @@ class GenreViewSet(viewsets.ModelViewSet):
     serializer_class = GenreSerializer
     permission_classes = [GenrePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    pagination_class = CustomPagination
 
 
     # Точная фильтрация (например, ?parent=1&is_active=true)
@@ -33,3 +35,9 @@ class GenreViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Автоматически устанавливает created_by = текущий пользователь."""
         serializer.save(created_by=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        # Отладка: выводим параметры запроса
+        print("Запрос GET params:", request.query_params)
+        print("Фильтр parent:", request.query_params.get('parent'))
+        return super().list(request, *args, **kwargs)

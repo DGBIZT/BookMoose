@@ -3,6 +3,12 @@ from .models import Genre
 
 class GenreSerializer(serializers.ModelSerializer):
     # Дополнительные читаемые поля
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Genre.objects.all(),
+        allow_null=True,
+        required=False,
+        default=None
+    )
     parent_name = serializers.CharField(
         source='parent.name',
         read_only=True,
