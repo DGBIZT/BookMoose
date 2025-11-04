@@ -80,7 +80,7 @@ class BookSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at', 'created_by']  # created_by задаётся в perform_create
+        read_only_fields = ['created_at', 'updated_at',]  # created_by задаётся в perform_create (created_by Убрал из списка, т.к. падал тест)
         extra_kwargs = {
         #     'publisher': {'write_only': True},
         #     'genre': {'write_only': True},

@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth import get_user_model
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 User = get_user_model() # Возвращает CustomUser
 
@@ -155,4 +156,14 @@ class Book(models.Model):
         return f"{self.title} ({author_names}, {self.publication_year})"
 
     def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        if self.available_copies > self.total_copies:
+            raise ValidationError(
+                'Количество доступных копий не может превышать общее количество копий.'
+            )
+
+    def save(self, *args, **kwargs):
+        self.clean()  # Вызываем валидацию перед сохранением
         super().save(*args, **kwargs)

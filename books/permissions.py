@@ -27,5 +27,5 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return True
 
         # Обычные пользователи — только свои книги
-        return obj.author == request.user  # Предполагаем, что у Book есть поле author=User
+        return obj.created_by == request.user   # Предполагаем, что у Book есть поле author=User
 
