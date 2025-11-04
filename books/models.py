@@ -16,7 +16,7 @@ class Book(models.Model):
     )
     # Автор
     author = models.ManyToManyField(
-        'authors.Author',  # Название модели (можно строку)
+        'authors.Author',
         verbose_name='Авторы',
         help_text='ФИО автора или список авторов книги',
         related_name='books', # Позволяет: author.books.all()
@@ -33,7 +33,7 @@ class Book(models.Model):
     # Международный стандартный номер книги
     isbn = models.CharField(
         max_length=17,
-        unique=True,
+        unique=True, # Гарантирует отсутствие дублей
         blank=True,
         null=True,
         verbose_name='ISBN',
