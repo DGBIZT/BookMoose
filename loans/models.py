@@ -2,6 +2,7 @@ from django.db import models
 from users.models import CustomUser
 from books.models import Book
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 class BookLoan(models.Model):
@@ -30,6 +31,16 @@ class BookLoan(models.Model):
 
     def __str__(self):
         return f"{self.book.title} → {self.user.username} ({self.loan_date.date()})"
+
+    def clean(self):
+        # Проверяем, есть ли активная выдача этой книги
+        if (BookLoan.objects
+                .filter(book=self.book, is_returned=False)
+                .exclude(id=self.id)  # исключаем текущий объект при обновлении
+                .exists()):
+            raise ValidationError(
+                "Книга уже выдана другому читателю и не возвращена."
+            )
 
     def save(self, *args, **kwargs):
         # Если книга отмечается как возвращённая и дата возврата не установлена

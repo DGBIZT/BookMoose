@@ -9,6 +9,17 @@ class BookLoanSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
 
+    def validate(self, data):
+        book = data.get('book')
+        if book is not None:  # поле присутствует и не None
+            if (BookLoan.objects
+                    .filter(book=book, is_returned=False)
+                    .exists()):
+                raise serializers.ValidationError({
+                    "book": "Книга уже выдана и не возвращена."
+                })
+        return data
+
     class Meta:
         model = BookLoan
         fields = [
