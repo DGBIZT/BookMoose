@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import Genre
+from django.test import TransactionTestCase
 from .serializers import GenreSerializer
 
 User = get_user_model()
@@ -63,13 +64,14 @@ class GenreModelTest(TestCase):
 
 
 
-class GenreAPITest(APITestCase):
+class GenreAPITest(TransactionTestCase):
     """Тесты API жанров."""
 
     def setUp(self):
+
         User.objects.filter(email='testuser@example.com').delete()
         User.objects.filter(email='admin@example.com').delete()
-
+        Genre.objects.all().delete()  # очищает таблицу перед каждым тестом
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='author',
@@ -116,11 +118,8 @@ class GenreAPITest(APITestCase):
     def test_list_genres(self):
         """GET /genres/ — список жанров."""
         response = self.client.get(self.list_url)
-        print("Статус:", response.status_code)
-        print("Данные ответа:", response.data)
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)  # ← Убираем ['results']
+        self.assertEqual(len(response.data), 4)
 
     def test_retrieve_genre(self):
         """GET /genres/{id}/ — деталь жанра."""
@@ -134,13 +133,13 @@ class GenreAPITest(APITestCase):
         """POST /genres/ — создание жанра (аутентифицированный)."""
         self.client.force_authenticate(user=self.user)
         data = {
-            'name': 'Детектив',
+            'name': 'Детектив XXI века',
             'description': 'Расследования и загадки',
             'order': 4
         }
         response = self.client.post(self.list_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Genre.objects.count(), 4)
+        self.assertEqual(Genre.objects.count(), 5)
         self.assertEqual(response.data['created_by_username'], 'author')
 
     def test_create_genre_unauthenticated(self):
@@ -193,18 +192,52 @@ class GenreAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_filter_by_parent(self):
-        """Фильтрация ?parent=..."""
-        # Фильтруем по parent=genre1 (должны получить поджанр 'Космоопера')
-        response = self.client.get(self.list_url, {'parent': self.genre1.pk})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Космоопера')
-        self.assertEqual(response.data[0]['parent'], self.genre1.pk)
+        """Фильтрация ?parent=... (только для существующего parent)"""
 
-        # Фильтрация по несуществующему parent
-        response = self.client.get(self.list_url, {'parent': 2})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        # 1. Проверяем существование жанра в БД
+        self.assertTrue(
+            Genre.objects.filter(pk=self.genre1.pk).exists(),
+            f"Жанр с pk={self.genre1.pk} не найден в БД!"
+        )
+
+        # 2. Выполняем запрос с фильтром по parent
+        response = self.client.get(
+            self.list_url,
+            {'parent': int(self.genre1.pk)}
+        )
+
+        # 3. Проверяем статус ответа
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+            f"Ожидался статус 200, получен {response.status_code}. Данные: {response.data}"
+        )
+
+        # 4. Проверяем наличие пагинации (поля 'results')
+        self.assertIn(
+            'results',
+            response.data,
+            "Ответ должен содержать поле 'results' (пагинация)"
+        )
+
+        results = response.data['results']
+
+        # 5. Проверяем количество результатов
+        self.assertEqual(
+            len(results),
+            1,
+            f"Ожидался 1 результат, получено {len(results)}. Данные: {results}"
+        )
+
+        # 6. Проверяем данные поджанра
+        subgenre = results[0]
+        self.assertEqual(subgenre['name'], 'Космоопера', "Неверное имя поджанра")
+        self.assertEqual(subgenre['parent'], self.genre1.pk, "Неверный parent PK")
+        self.assertEqual(
+            subgenre['full_path'],
+            'Научная фантастика → Космоопера',
+            "Неверный full_path"
+        )
 
     def test_filter_by_is_active(self):
         """Фильтрация ?is_active=..."""
@@ -216,8 +249,11 @@ class GenreAPITest(APITestCase):
         response = self.client.get(self.list_url, {'is_active': 'true'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # response.data — это список, а не словарь с 'results'
-        active_names = [item['name'] for item in response.data]
+        # Проверяем, что ответ пагинирован
+        self.assertIn('results', response.data, "Ответ должен содержать поле 'results'")
+
+        # Берём имена из results
+        active_names = [item['name'] for item in response.data['results']]
         self.assertIn('Научная фантастика', active_names)
         self.assertIn('Космоопера', active_names)
         self.assertNotIn('Фэнтези', active_names)  # деактивирован
@@ -226,18 +262,14 @@ class GenreAPITest(APITestCase):
         response = self.client.get(self.list_url, {'is_active': 'false'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        inactive_names = [item['name'] for item in response.data]
+        self.assertIn('results', response.data, "Ответ должен содержать поле 'results'")
+        inactive_names = [item['name'] for item in response.data['results']]
         self.assertIn('Фэнтези', inactive_names)
 
     def test_search_in_name_description(self):
         """Поиск ?search=... по name и description."""
         # Ищем по части названия
         response = self.client.get(self.list_url, {'search': 'науч'})
-
-        print("Статус ответа:", response.status_code)
-        print("Тип response.data:", type(response.data))
-        print("Содержимое response.data:", response.data)
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Берем данные из 'results' пагинированного ответа

@@ -186,7 +186,7 @@ class UserAPITestCase(APITestCase):
 
     def test_duplicate_registration(self):
         """Тест регистрации с существующим email"""
-        url = reverse('register')
+        url = reverse('users:register')
         data = {
             'email': 'test@example.com',  # уже существующий email
             'username': 'newuser',

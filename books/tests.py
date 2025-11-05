@@ -1,4 +1,3 @@
-# genres/tests.py
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
@@ -138,9 +137,6 @@ class BookSerializerTest(APITestCase):
         self.assertFalse(serializer.is_valid(),
                          "Сериализатор должен отвергать данные с available_copies > total_copies")
 
-        # Выводим ошибки для отладки
-        print("Ошибки валидации:", serializer.errors)
-
         # Проверяем наличие ошибки для поля available_copies
         self.assertIn('available_copies', serializer.errors, "Ошибка должна быть в поле 'available_copies'")
 
@@ -251,8 +247,6 @@ class BookViewSetTest(APITestCase):
             'created_by': self.user.id
         }
         response = self.client.put(url, data, format='json')
-        print("Статус:", response.status_code)
-        print("Ошибки:", response.data)  # ← ВАЖНО: покажет детали валидации
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         book.refresh_from_db()
         self.assertEqual(book.title, 'Обновлённая книга')

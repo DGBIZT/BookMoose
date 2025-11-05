@@ -2,6 +2,7 @@
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import BookLoan
+from .paginators import CustomPagination
 from .serializers import BookLoanSerializer
 from .permissions import BookLoanPermission
 
@@ -17,6 +18,7 @@ class BookLoanViewSet(viewsets.ModelViewSet):
     """
     queryset = BookLoan.objects.all()
     serializer_class = BookLoanSerializer
+    pagination_class = CustomPagination
     permission_classes = [BookLoanPermission]  # опционально
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 

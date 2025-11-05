@@ -37,7 +37,4 @@ class GenreViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     def list(self, request, *args, **kwargs):
-        # Отладка: выводим параметры запроса
-        print("Запрос GET params:", request.query_params)
-        print("Фильтр parent:", request.query_params.get('parent'))
         return super().list(request, *args, **kwargs)
