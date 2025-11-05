@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import CustomUser
 from books.models import Book
+from django.utils import timezone
 
 
 class BookLoan(models.Model):
@@ -29,3 +30,9 @@ class BookLoan(models.Model):
 
     def __str__(self):
         return f"{self.book.title} → {self.user.username} ({self.loan_date.date()})"
+
+    def save(self, *args, **kwargs):
+        # Если книга отмечается как возвращённая и дата возврата не установлена
+        if self.is_returned and not self.return_date:
+            self.return_date = timezone.now()  # Текущее время сервера
+        super().save(*args, **kwargs)
