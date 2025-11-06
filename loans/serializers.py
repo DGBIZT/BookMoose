@@ -1,30 +1,120 @@
 from rest_framework import serializers
-from .models import BookLoan
+from django.utils import timezone
+from .models import BookLoan, BookInstance
 from users.models import CustomUser
-from books.models import Book
+
+
 
 class BookLoanSerializer(serializers.ModelSerializer):
-    # Для удобства вывода имён (можно убрать, если не нужно)
-    book_title = serializers.CharField(source='book.title', read_only=True)
-    user_username = serializers.CharField(source='user.username', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    """
+    Сериализатор для выдач книг.
 
-    def validate(self, data):
-        book = data.get('book')
-        if book is not None:  # поле присутствует и не None
-            if (BookLoan.objects
-                    .filter(book=book, is_returned=False)
-                    .exists()):
-                raise serializers.ValidationError({
-                    "book": "Книга уже выдана и не возвращена."
-                })
-        return data
+    Поля для чтения:
+    - book_title: название книги (через book_instance.book.title)
+    - copy_id: ID экземпляра (book_instance.copy_id)
+    - user_username: логин пользователя
+    - created_by_username: кто создал запись
+
+    Поля для записи:
+    - book_instance: ID экземпляра
+    - user: ID пользователя
+    - due_date: срок возврата
+    - notes: примечания
+
+    Автоматически:
+    - loan_date: при создании
+    - created_by: текущий пользователь (в ViewSet)
+    - return_date: при установке is_returned=True
+    """
+
+    # Поля для удобного отображения
+    book_title = serializers.CharField(
+        source='book_instance.book.title',
+        read_only=True
+    )
+    copy_id = serializers.CharField(
+        source='book_instance.copy_id',
+        read_only=True
+    )
+    user_username = serializers.CharField(
+        source='user.username',
+        read_only=True
+    )
+    created_by_username = serializers.CharField(
+        source='created_by.username',
+        read_only=True
+    )
 
     class Meta:
         model = BookLoan
         fields = [
-            'id', 'book', 'book_title', 'user', 'user_username',
-            'loan_date', 'return_date', 'is_returned',
-            'due_date', 'notes', 'created_by', 'created_by_username'
+            'id',
+            'book_instance',
+            'copy_id',
+            'book_title',
+            'user',
+            'user_username',
+            'loan_date',
+            'return_date',
+            'is_returned',
+            'due_date',
+            'notes',
+            'created_by',
+            'created_by_username',
         ]
-        read_only_fields = ['loan_date', 'created_by']
+        read_only_fields = [
+            'loan_date',
+            'return_date',
+            'created_by',
+        ]
+
+    def validate(self, data):
+        """
+        Общая валидация:
+        1. Проверка доступности экземпляра (если создаётся новая выдача).
+        2. Контроль срока возврата.
+        3. Запрет изменения loan_date и created_by.
+        """
+        # 1. Проверка при создании/обновлении
+        book_instance = data.get('book_instance')
+        due_date = data.get('due_date')
+        is_returned = data.get('is_returned')
+
+        # Если создаётся новая выдача (instance отсутствует)
+        if not self.instance:
+            if not book_instance:
+                raise serializers.ValidationError({
+                    'book_instance': 'Обязательно укажите экземпляр книги.'
+                })
+            if book_instance.status != 'available':
+                raise serializers.ValidationError({
+                    'book_instance': 'Экземпляр уже выдан или недоступен.'
+                })
+
+        # 2. Проверка due_date
+        if due_date:
+            loan_date = self.instance.loan_date if self.instance else timezone.now()
+            if due_date < loan_date:
+                raise serializers.ValidationError({
+                    'due_date': 'Срок возврата не может быть раньше даты выдачи.'
+                })
+
+        # 3. Запрет ручного изменения read_only полей
+        if 'loan_date' in data or 'created_by' in data:
+            raise serializers.ValidationError({
+                'loan_date': 'Это поле нельзя изменять.',
+                'created_by': 'Это поле нельзя изменять.'
+            })
+
+        return data
+
+    def to_representation(self, instance):
+        """
+        Кастомизация вывода:
+        - Скрываем copy_id и book_title, если экземпляр не указан.
+        """
+        rep = super().to_representation(instance)
+        if not instance.book_instance:
+            rep['copy_id'] = None
+            rep['book_title'] = None
+        return rep

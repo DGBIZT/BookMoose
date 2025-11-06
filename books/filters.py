@@ -1,30 +1,40 @@
 from django_filters import rest_framework as filters
 from .models import Book
+from authors.models import Author
 
 
 class BookFilter(filters.FilterSet):
-    # Точные совпадения
-    author = filters.CharFilter(field_name='author__id', lookup_expr='exact')
-    genre = filters.CharFilter(field_name='genre__id', lookup_expr='exact')
-    publisher = filters.CharFilter(field_name='publisher__id', lookup_expr='exact')
-    series = filters.CharFilter(field_name='series__id', lookup_expr='exact')
+    # M2M-поля
+    author = filters.ModelMultipleChoiceFilter(
+        field_name='author',
+        queryset=Author.objects.all(),
+        lookup_expr='in',
+        label='Автор'
+    )
+    genre = filters.CharFilter(field_name='genre__id', lookup_expr='exact', label='Жанр')
+    publisher = filters.CharFilter(field_name='publisher__id', lookup_expr='exact', label='Издательство')
+    series = filters.CharFilter(field_name='series__id', lookup_expr='exact', label='Серия')
 
     # Числовые диапазоны
-    publication_year = filters.RangeFilter()
-    available_copies = filters.NumberFilter()
-    total_copies = filters.NumberFilter()
+    publication_year = filters.RangeFilter(label='Год издания (диапазон)')
+    available_copies = filters.NumberFilter(lookup_expr='gte', label='Доступно ≥')
+    total_copies = filters.NumberFilter(lookup_expr='lte', label='Всего ≤')
+
 
     # Поиск по подстроке
-    title = filters.CharFilter(lookup_expr='icontains')
-    isbn = filters.CharFilter(lookup_expr='icontains')
-    description = filters.CharFilter(lookup_expr='icontains')
+    title = filters.CharFilter(lookup_expr='icontains', label='Название')
+    isbn = filters.CharFilter(lookup_expr='icontains', label='ISBN')
+    description = filters.CharFilter(lookup_expr='icontains', label='Описание')
 
     class Meta:
         model = Book
-        fields = []
+        fields = [
+            'author', 'genre', 'publisher', 'series',
+            'publication_year', 'available_copies', 'total_copies',
+            'title', 'isbn', 'description'
+        ]
 
-
-# search_fields и ordering_fields можно оставить в виде констант
+# Константы для search/ordering
 BOOK_SEARCH_FIELDS = [
     'title',
     'author__full_name',

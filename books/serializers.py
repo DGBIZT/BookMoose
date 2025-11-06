@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Book
 from authors.models import Author
+from .models import BookInstance
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -31,31 +32,34 @@ class BookSerializer(serializers.ModelSerializer):
     #     help_text="ID серии (модель Series)"
     # )
 
-    created_by_email = serializers.EmailField(
-        source='created_by.email',
-        read_only=True,
-        help_text="Email пользователя, добавившего книгу"
-    )
+    created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
+    author = serializers.SerializerMethodField()
+    genre = serializers.StringRelatedField()
+    created_by = serializers.StringRelatedField()
+    cover_image_url = serializers.SerializerMethodField(read_only=True)
 
-    author = serializers.PrimaryKeyRelatedField(
-        queryset=Author.objects.all(),  # Укажите корректный путь к модели
-        many=True,  # Обязательный параметр для M2M
-        allow_null=False,  # Если авторы обязательны
-        required=True,  # Если авторы обязательны при создании
-        help_text="Список ID авторов (модель Author)"
-    )
+    available_copies = serializers.IntegerField(read_only=True)
+    total_copies = serializers.IntegerField()
 
-    # Форматирование дат
-    created_at = serializers.DateTimeField(
-        format="%Y-%m-%d %H:%M:%S",
-        read_only=True,
-        help_text="Дата создания записи"
-    )
-    updated_at = serializers.DateTimeField(
-        format="%Y-%m-%d %H:%M:%S",
-        read_only=True,
-        help_text="Дата последнего обновления"
-    )
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+
+    def get_author(self, obj):
+        return [str(author) for author in obj.author.all()]
+
+    def get_cover_image_url(self, obj):
+        if obj.cover_image:  # Проверяем, есть ли файл
+            return obj.cover_image.url
+        return None  # Если файла нет — возвращаем None
+
+    def update(self, instance, validated_data):
+        authors = validated_data.pop('author', None)
+        if authors is not None:
+            instance.author.set(authors)
+        # Явно сохраняем total_copies, если передано
+        if 'total_copies' in validated_data:
+            instance.total_copies = validated_data['total_copies']
+        return super().update(instance, validated_data)
 
     class Meta:
         model = Book
@@ -77,57 +81,42 @@ class BookSerializer(serializers.ModelSerializer):
             'available_copies',
             'total_copies',
             'cover_image',
+            'cover_image_url',
             'created_at',
             'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at',]  # created_by задаётся в perform_create (created_by Убрал из списка, т.к. падал тест)
+
+        read_only_fields = [
+            'created_at',
+            'updated_at',
+            'available_copies',
+            'total_copies',
+            'created_by',
+            'created_by_email',
+        ]
         extra_kwargs = {
-        #     'publisher': {'write_only': True},
-        #     'genre': {'write_only': True},
-        #     'series': {'write_only': True},
+            'isbn': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'description': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'edition': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'cover_image': {
+                'required': False,
+            }
         }
 
-    def validate(self, data):
-        """
-        Общая валидация на уровне объекта.
-        1. Проверяем, что available_copies <= total_copies.
-        2. Можно добавить другие бизнес‑правила.
-        """
-        available = data.get('available_copies')
-        total = data.get('total_copies')
-
-        if available is not None and total is not None:
-            if available > total:
-                raise serializers.ValidationError({
-                    'available_copies': (
-                        "Количество доступных копий не может превышать общее количество."
-                    )
-                })
-
-        return data
-
-    def to_representation(self, instance):
-        """
-        Кастомизация вывода данных.
-        Здесь: оставляем всё как есть, но можно:
-        - скрывать поля для определённых действий;
-        - добавлять динамические поля.
-        """
-        rep = super().to_representation(instance)
-        # Заменяем ID авторов на их имена (пример)
-        if 'author' in rep and instance.author.exists():
-            rep['author'] = [str(author) for author in instance.author.all()]
-        return rep
-
-    def create(self, validated_data):
-        """
-        Можно добавить логику при создании (например, логирование).
-        DRF автоматически сохранит, но здесь — точка для расширения.
-        """
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        """
-        Аналогично — точка для кастомной логики при обновлении.
-        """
-        return super().update(instance, validated_data)
+class BookInstanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookInstance
+        fields = [
+            'id', 'copy_id', 'status', 'book', 'borrower', 'acquisition_date'
+        ]
+        read_only_fields = ['copy_id', 'book']  # copy_id генерируется автоматически, book задаётся при создании
