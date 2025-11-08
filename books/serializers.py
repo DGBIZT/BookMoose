@@ -115,8 +115,10 @@ class BookSerializer(serializers.ModelSerializer):
 
 class BookInstanceSerializer(serializers.ModelSerializer):
     class Meta:
+
+
         model = BookInstance
         fields = [
             'id', 'copy_id', 'status', 'book', 'borrower', 'acquisition_date'
         ]
-        read_only_fields = ['copy_id', 'book']  # copy_id генерируется автоматически, book задаётся при создании
+        # read_only_fields = ['copy_id', 'book']  # copy_id генерируется автоматически, book задаётся при создании
