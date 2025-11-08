@@ -1,7 +1,14 @@
 Кастомная команда заполнения genres:
-python manage.py import_genres data/genres.csv --user-id=1
-Кастомная команда заполнения books
+python manage.py import_genres data/genres.xlsx --user-id 1
+
+Кастомная команда заполнения books:
 python manage.py fill_books data/books.xlsx --user-id 1
+
+Кастомная команда заполнения authors:
+1) python manage.py import_authors data/authors.xlsx --user-id 1
+2) python manage.py fill_authors
+
+
 Обновление количества экземпляров книг:
 POST http://127.0.0.1:8000/books/books/11/add_copies/ 
 {
