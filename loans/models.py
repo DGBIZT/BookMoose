@@ -78,11 +78,14 @@ class BookLoan(models.Model):
         # Автоматически устанавливаем дату возврата при отметке "возвращена"
         if self.is_returned and not self.return_date:
             self.return_date = timezone.now()
+
         super().save(*args, **kwargs)
 
-        # Синхронизируем статус экземпляра
-        if self.is_returned:
-            self.book_instance.status = 'available'
-        else:
-            self.book_instance.status = 'loaned'
-        self.book_instance.save()
+        # Синхронизируем статус экземпляра, только если он задан
+        if self.book_instance is not None:
+            if self.is_returned:
+                self.book_instance.status = 'available'
+            else:
+                self.book_instance.status = 'loaned'
+            self.book_instance.save(update_fields=['status'])
+

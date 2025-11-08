@@ -42,6 +42,10 @@ class BookLoanViewSet(viewsets.ModelViewSet):
 
     # Корректные поля для фильтрации
     filterset_fields = ['is_returned', 'book_instance', 'user']
+    search_fields = [
+        'book_instance__book__title',
+        'notes'
+    ]
 
     # Поиск
     search_fields = [
@@ -57,12 +61,26 @@ class BookLoanViewSet(viewsets.ModelViewSet):
     ordering = ['-loan_date']
 
     def get_queryset(self):
-        """Оптимизируем запросы: подгружаем связанные объекты."""
-        return BookLoan.objects.select_related(
+        """
+        Оптимизируем запросы и фильтруем по текущему пользователю:
+        - Только активные выдачи (is_returned=False) текущего пользователя.
+        - Подгружаем связанные объекты для оптимизации.
+        """
+        queryset = BookLoan.objects.select_related(
             'book_instance__book',
             'user',
             'created_by'
         ).prefetch_related('book_instance')
+
+        if self.request and self.request.user.is_authenticated:
+            if not self.request.user.is_staff:
+                # Только для обычных пользователей: свои активные выдачи
+                queryset = queryset.filter(
+                    user=self.request.user,
+                    is_returned=False
+                )
+            # Для staff: все выдачи без фильтрации
+        return queryset
 
     def perform_create(self, serializer):
         """

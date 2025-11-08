@@ -73,14 +73,11 @@ class BookLoanSerializer(serializers.ModelSerializer):
         Общая валидация:
         1. Проверка доступности экземпляра (если создаётся новая выдача).
         2. Контроль срока возврата.
-        3. Запрет изменения loan_date и created_by.
         """
-        # 1. Проверка при создании/обновлении
         book_instance = data.get('book_instance')
         due_date = data.get('due_date')
-        is_returned = data.get('is_returned')
 
-        # Если создаётся новая выдача (instance отсутствует)
+        # 1. Проверка при создании/обновлении
         if not self.instance:
             if not book_instance:
                 raise serializers.ValidationError({
@@ -99,14 +96,7 @@ class BookLoanSerializer(serializers.ModelSerializer):
                     'due_date': 'Срок возврата не может быть раньше даты выдачи.'
                 })
 
-        # 3. Запрет ручного изменения read_only полей
-        if 'loan_date' in data or 'created_by' in data:
-            raise serializers.ValidationError({
-                'loan_date': 'Это поле нельзя изменять.',
-                'created_by': 'Это поле нельзя изменять.'
-            })
-
-        return data
+        return data  # Убрали проверку loan_date/created_by — DRF уже обработал read_only
 
     def to_representation(self, instance):
         """

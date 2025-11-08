@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'authors',
     'genres',
     'loans',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
