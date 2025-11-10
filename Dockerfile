@@ -24,7 +24,7 @@ RUN pip install poetry
 RUN poetry config virtualenvs.create false
 
 # Устанавливаем зависимости (только основные, без dev)
-RUN poetry install --only main
+RUN poetry install --only main --no-root
 
 # Копируем код проекта
 COPY . .
