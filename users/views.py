@@ -1,13 +1,15 @@
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from users.serializers import UserSerializer
-from users.models import CustomUser
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from users.models import CustomUser
+from users.serializers import UserSerializer
 
 
 class UserCreateAPIView(generics.CreateAPIView):
     """Регистрация нового пользователя"""
+
     serializer_class = UserSerializer
     queryset = CustomUser.objects.all()
     permission_classes = (AllowAny,)
@@ -22,13 +24,14 @@ class UserCreateAPIView(generics.CreateAPIView):
 
 class UserRetrieveAPIView(generics.RetrieveAPIView):
     """Получение информации о пользователе из БД"""
+
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
     queryset = CustomUser.objects.all()
 
     def get_object(self):
         # Проверяем, какой URL используется
-        if self.request.path.endswith('/me/'):
+        if self.request.path.endswith("/me/"):
             # Если это /me/, возвращаем текущего пользователя
             return self.request.user
         else:
@@ -39,7 +42,7 @@ class UserRetrieveAPIView(generics.RetrieveAPIView):
         instance = self.get_object()
 
         # Проверяем права доступа
-        if not request.path.endswith('/me/') and not request.user.is_superuser:
+        if not request.path.endswith("/me/") and not request.user.is_superuser:
             if instance != request.user:
                 raise PermissionDenied("Доступ запрещен")
 
@@ -49,6 +52,7 @@ class UserRetrieveAPIView(generics.RetrieveAPIView):
 
 class UserUpdateAPIView(generics.UpdateAPIView):
     """Обновление пользователя"""
+
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
@@ -62,26 +66,27 @@ class UserUpdateAPIView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop("partial", False)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
         # Дополнительная проверка прав перед обновлением
         if not request.user.is_superuser and instance != request.user:
-            return Response({'detail': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Доступ запрещен"}, status=status.HTTP_403_FORBIDDEN)
 
         self.perform_update(serializer)
         return Response(serializer.data)
 
 
 class UserDestroyAPIView(generics.DestroyAPIView):
-    """ Удаление учетной записи пользователя из системы """
+    """Удаление учетной записи пользователя из системы"""
+
     queryset = CustomUser.objects.all()
     permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         # Получаем ID пользователя из URL
-        pk = self.kwargs.get('pk')
+        pk = self.kwargs.get("pk")
 
         # Если это суперпользователь, он может удалять любого пользователя
         if self.request.user.is_superuser:

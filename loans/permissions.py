@@ -25,7 +25,7 @@ class BookLoanPermission(permissions.BasePermission):
             return True
 
         # Обычные пользователи — только GET и PATCH
-        if request.method in ['GET', 'PATCH']:
+        if request.method in ["GET", "PATCH"]:
             return True
 
         # Остальные методы (POST, PUT, DELETE) — запрещены
@@ -39,17 +39,15 @@ class BookLoanPermission(permissions.BasePermission):
         # Обычные пользователи:
         # - GET: если obj.user == request.user
         # - PATCH: если obj.user == request.user и меняются только разрешённые поля
-        if request.method == 'GET':
+        if request.method == "GET":
             return obj.user == request.user
 
-        if request.method == 'PATCH':
+        if request.method == "PATCH":
             # Проверяем, что пользователь меняет только разрешённые поля
-            allowed_fields = {'notes', 'due_date'}
+            allowed_fields = {"notes", "due_date"}
             requested_fields = set(request.data.keys())
             if not requested_fields.issubset(allowed_fields):
-                raise PermissionDenied(
-                    "Вы можете изменять только поля: notes, due_date."
-                )
+                raise PermissionDenied("Вы можете изменять только поля: notes, due_date.")
             return obj.user == request.user
 
         # Все остальные методы (PUT, DELETE, POST) — запрещены для не-staff

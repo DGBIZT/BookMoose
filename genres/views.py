@@ -1,10 +1,11 @@
-from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
+from rest_framework import filters, viewsets
+
 from .models import Genre
 from .paginators import CustomPagination
-from .serializers import GenreSerializer
 from .permissions import GenrePermission
+from .serializers import GenreSerializer
+
 
 class GenreViewSet(viewsets.ModelViewSet):
     """
@@ -15,22 +16,22 @@ class GenreViewSet(viewsets.ModelViewSet):
     - PUT/PATCH /genres/{id}/ — обновить жанр
     - DELETE /genres/{id}/ — удалить жанр
     """
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [GenrePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     pagination_class = CustomPagination
 
-
     # Точная фильтрация (например, ?parent=1&is_active=true)
-    filterset_fields = ['parent', 'is_active']
+    filterset_fields = ["parent", "is_active"]
 
     # Поиск по подстроке в name/description (?search=фантастика)
-    search_fields = ['name', 'description']
+    search_fields = ["name", "description"]
 
     # Сортировка (?ordering=name,-order)
-    ordering_fields = ['name', 'order', 'created_by__username']
-    ordering = ['order', 'name']  # дефолтная сортировка
+    ordering_fields = ["name", "order", "created_by__username"]
+    ordering = ["order", "name"]  # дефолтная сортировка
 
     def perform_create(self, serializer):
         """Автоматически устанавливает created_by = текущий пользователь."""

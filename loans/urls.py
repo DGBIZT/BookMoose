@@ -1,13 +1,15 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import BookLoanViewSet
+
 from loans.apps import LoansConfig
 
+from .views import BookLoanViewSet
+
 router = DefaultRouter()
-router.register(r'loans', BookLoanViewSet, basename='loans')
+router.register(r"loans", BookLoanViewSet, basename="loans")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]
 
 app_name = LoansConfig.name

@@ -1,12 +1,12 @@
-from rest_framework import viewsets, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
-from .models import BookLoan, BookInstance
-from .paginators import CustomPagination
-from .serializers import BookLoanSerializer
-from .permissions import BookLoanPermission
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, viewsets
+from rest_framework.exceptions import ValidationError
 
+from .models import BookLoan
+from .paginators import CustomPagination
+from .permissions import BookLoanPermission
+from .serializers import BookLoanSerializer
 
 
 class BookLoanViewSet(viewsets.ModelViewSet):
@@ -33,32 +33,30 @@ class BookLoanViewSet(viewsets.ModelViewSet):
     - loan_date, return_date, due_date
     - book_instance__book__title, user__username
     """
+
     queryset = BookLoan.objects.all()
     serializer_class = BookLoanSerializer
     pagination_class = CustomPagination
     permission_classes = [BookLoanPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
-
     # Корректные поля для фильтрации
-    filterset_fields = ['is_returned', 'book_instance', 'user']
-    search_fields = [
-        'book_instance__book__title',
-        'notes'
-    ]
+    filterset_fields = ["is_returned", "book_instance", "user"]
+    search_fields = ["book_instance__book__title", "notes"]
 
     # Поиск
-    search_fields = [
-        'book_instance__book__title',  # через связь BookInstance → Book
-        'notes'
-    ]
+    search_fields = ["book_instance__book__title", "notes"]  # через связь BookInstance → Book
 
     # Сортировка
     ordering_fields = [
-        'loan_date', 'return_date', 'due_date',
-        'book_instance__book__title', 'user__username', 'is_returned'
+        "loan_date",
+        "return_date",
+        "due_date",
+        "book_instance__book__title",
+        "user__username",
+        "is_returned",
     ]
-    ordering = ['-loan_date']
+    ordering = ["-loan_date"]
 
     def get_queryset(self):
         """
@@ -66,19 +64,14 @@ class BookLoanViewSet(viewsets.ModelViewSet):
         - Только активные выдачи (is_returned=False) текущего пользователя.
         - Подгружаем связанные объекты для оптимизации.
         """
-        queryset = BookLoan.objects.select_related(
-            'book_instance__book',
-            'user',
-            'created_by'
-        ).prefetch_related('book_instance')
+        queryset = BookLoan.objects.select_related("book_instance__book", "user", "created_by").prefetch_related(
+            "book_instance"
+        )
 
         if self.request and self.request.user.is_authenticated:
             if not self.request.user.is_staff:
                 # Только для обычных пользователей: свои активные выдачи
-                queryset = queryset.filter(
-                    user=self.request.user,
-                    is_returned=False
-                )
+                queryset = queryset.filter(user=self.request.user, is_returned=False)
             # Для staff: все выдачи без фильтрации
         return queryset
 
@@ -88,28 +81,21 @@ class BookLoanViewSet(viewsets.ModelViewSet):
         2. Устанавливаем created_by = текущий пользователь.
         3. Валидируем due_date.
         """
-        book_instance = serializer.validated_data['book_instance']
-        due_date = serializer.validated_data.get('due_date')
+        book_instance = serializer.validated_data["book_instance"]
+        due_date = serializer.validated_data.get("due_date")
 
         # Проверка доступности
-        if book_instance.status != 'available':
-            raise ValidationError({
-                'book_instance': 'Экземпляр уже выдан или недоступен.'
-            })
+        if book_instance.status != "available":
+            raise ValidationError({"book_instance": "Экземпляр уже выдан или недоступен."})
 
         # Проверка срока возврата
         if due_date and due_date < timezone.now():
-            raise ValidationError({
-                'due_date': 'Срок возврата не может быть в прошлом.'
-            })
+            raise ValidationError({"due_date": "Срок возврата не может быть в прошлом."})
 
-        serializer.save(
-            created_by=self.request.user,
-            is_returned=False  # Явно задаём статус
-        )
+        serializer.save(created_by=self.request.user, is_returned=False)  # Явно задаём статус
 
         # Обновляем статус экземпляра
-        book_instance.status = 'loaned'
+        book_instance.status = "loaned"
         book_instance.save()
 
     def perform_update(self, serializer):
@@ -122,13 +108,13 @@ class BookLoanViewSet(viewsets.ModelViewSet):
 
         if instance.is_returned and not instance.return_date:
             instance.return_date = timezone.now()
-            instance.save(update_fields=['return_date'])
+            instance.save(update_fields=["return_date"])
 
         # Синхронизируем статус экземпляра
         if instance.is_returned:
-            instance.book_instance.status = 'available'
+            instance.book_instance.status = "available"
         else:
-            instance.book_instance.status = 'loaned'
+            instance.book_instance.status = "loaned"
         instance.book_instance.save()
 
     def perform_destroy(self, instance):
@@ -139,7 +125,7 @@ class BookLoanViewSet(viewsets.ModelViewSet):
         """
         if not instance.is_returned:
             # Если книга не была возвращена, освобождаем экземпляр
-            instance.book_instance.status = 'available'
+            instance.book_instance.status = "available"
             instance.book_instance.save()
 
         instance.delete()

@@ -15,7 +15,7 @@ class GenrePermission(permissions.BasePermission):
             return True
 
         # CREATE — только аутентифицированные
-        if request.method == 'POST':
+        if request.method == "POST":
             return request.user and request.user.is_authenticated
 
         # UPDATE/DELETE — проверяем на уровне объекта (в has_object_permission)

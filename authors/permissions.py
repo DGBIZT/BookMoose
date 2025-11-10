@@ -1,5 +1,4 @@
 from rest_framework import permissions
-from .models import Author
 
 
 class AuthorPermission(permissions.BasePermission):
@@ -12,7 +11,7 @@ class AuthorPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         # Все авторизованные пользователи могут создавать (POST)
-        if request.method == 'POST' and request.user.is_authenticated:
+        if request.method == "POST" and request.user.is_authenticated:
             return True
         # Для остальных методов требуется аутентификация
         return request.user and request.user.is_authenticated
@@ -24,7 +23,7 @@ class AuthorPermission(permissions.BasePermission):
 
         # Обычные пользователи могут редактировать/удалять только своих авторов
         # Предполагаем, что у Author есть поле created_by (ForeignKey на User)
-        if hasattr(obj, 'created_by'):
+        if hasattr(obj, "created_by"):
             return obj.created_by == request.user
 
         return False

@@ -1,7 +1,8 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
+
 
 class Genre(models.Model):
     """
@@ -13,66 +14,53 @@ class Genre(models.Model):
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name='Название жанра',
-        help_text='Краткое название жанра, например: "Фантастика", "Детектив"'
+        verbose_name="Название жанра",
+        help_text='Краткое название жанра, например: "Фантастика", "Детектив"',
     )
 
     # Описание жанра (необязательно)
     description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Описание',
-        help_text='Подробное описание особенностей жанра'
+        blank=True, null=True, verbose_name="Описание", help_text="Подробное описание особенностей жанра"
     )
 
     # Родительский жанр (для иерархической структуры, например: "Научная фантастика" → "Фантастика")
     parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        related_name='subgenres',
-        verbose_name='Родительский жанр',
-        help_text='Основной жанр, к которому относится данный поджанр'
+        related_name="subgenres",
+        verbose_name="Родительский жанр",
+        help_text="Основной жанр, к которому относится данный поджанр",
     )
 
     # Порядок сортировки (для отображения в списках)
     order = models.PositiveIntegerField(
         default=0,
-        verbose_name='Порядок сортировки',
-        help_text='Число для сортировки жанров в списках (меньше число — выше в списке)'
+        verbose_name="Порядок сортировки",
+        help_text="Число для сортировки жанров в списках (меньше число — выше в списке)",
     )
 
     # Активен ли жанр (для временного скрытия без удаления)
     is_active = models.BooleanField(
-        default=True,
-        verbose_name='Активен',
-        help_text='Если снято, жанр не будет отображаться в интерфейсе'
+        default=True, verbose_name="Активен", help_text="Если снято, жанр не будет отображаться в интерфейсе"
     )
 
     created_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        verbose_name='Создал запись',
-        help_text='Пользователь, создавший автора'
+        User, on_delete=models.CASCADE, verbose_name="Создал запись", help_text="Пользователь, создавший автора"
     )
 
     class Meta:
-        verbose_name = 'Жанр'
-        verbose_name_plural = 'Жанры'
-        ordering = ['order', 'name']  # Сначала по порядку, затем по названию
+        verbose_name = "Жанр"
+        verbose_name_plural = "Жанры"
+        ordering = ["order", "name"]  # Сначала по порядку, затем по названию
         indexes = [
-            models.Index(fields=['name']),
-            models.Index(fields=['parent']),
-            models.Index(fields=['is_active']),
+            models.Index(fields=["name"]),
+            models.Index(fields=["parent"]),
+            models.Index(fields=["is_active"]),
         ]
         # Ограничение на уникальность имени
-        constraints = [
-            models.UniqueConstraint(
-                fields=['name'],
-                name='unique_genre_name'
-            )
-        ]
+        constraints = [models.UniqueConstraint(fields=["name"], name="unique_genre_name")]
 
     def __str__(self):
         """Строковое представление жанра."""
@@ -111,4 +99,4 @@ class Genre(models.Model):
         path = self.get_ancestors()
         path.reverse()
         path.append(self.name)
-        return ' → '.join(path)
+        return " → ".join(path)

@@ -1,6 +1,7 @@
-from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
+
 from users.models import CustomUser
 
 
@@ -9,9 +10,9 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = "__all__"
         extra_kwargs = {
-            'password': {'write_only': True},
-            'is_confirmed': {'read_only': True},
-            'is_blocked': {'read_only': True}
+            "password": {"write_only": True},
+            "is_confirmed": {"read_only": True},
+            "is_blocked": {"read_only": True},
         }
 
     def validate_password(self, value):
@@ -32,7 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
+        password = validated_data.pop("password")
         user = CustomUser(**validated_data)
         user.set_password(password)
         user.save()
@@ -40,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Получаем пароль из validated_data
-        password = validated_data.pop('password', None)
+        password = validated_data.pop("password", None)
 
         # Если пароль передан, хешируем его
         if password:
