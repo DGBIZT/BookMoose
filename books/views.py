@@ -31,28 +31,68 @@ class BookViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def add_copies(self, request, pk=None):
+        """
+        Действие для добавления экземпляров книги (копий).
+        Вызывается по POST-запросу к URL: /books/{pk}/add_copies/
+        """
+
         book = self.get_object()
+
+        # Извлекаем параметр 'count' из тела запроса (сколько копий нужно добавить)
+        # Если 'count' не передан, используем значение по умолчанию = 1
         count = request.data.get("count", 1)
 
-        # Валидация
         if not isinstance(count, int) or count < 1:
             return Response({"error": "count должен быть целым числом ≥ 1"}, status=400)
 
-        # Создаём экземпляры
+        # Получаем все существующие copy_id для данной книги из БД
+        # Это нужно, чтобы не создать дубликаты copy_id
+        existing_ids = set(
+            BookInstance.objects.filter(book=book).values_list(  # Фильтруем экземпляры по текущей книге
+                "copy_id", flat=True
+            )  # Получаем только значения copy_id
+        )
+
+        created_count = 0
+
+        # Цикл для создания нужного количества копий (count)
         for i in range(count):
+            # Генерируем уникальный copy_id
+            attempts = 0  # Счетчик попыток подбора свободного copy_id
+            while True:
+                if book.isbn:
+                    copy_id = f"{book.isbn}-{i + 1 + attempts}"
+                else:
+                    copy_id = f"COPY-{book.id}-{i + 1 + attempts}"
+
+                if copy_id not in existing_ids:
+                    break
+                attempts += 1
+
+            # Создаем новый экземпляр книги в БД
             BookInstance.objects.create(
                 book=book,
-                copy_id=f"{book.isbn}-{i + 1}" if book.isbn else f"COPY-{book.id}-{i + 1}",
+                copy_id=copy_id,
                 status="available",
             )
+            # Добавляем созданный copy_id в набор существующих, чтобы избежать дубликатов в следующих итерациях
+            existing_ids.add(copy_id)
+            created_count += 1
 
-        # Перезагружаем book из БД, чтобы сбросить кэш related_manager
+        # Обновляем объект книги из БД (сбрасываем кэш, чтобы увидеть новые экземпляры)
         book.refresh_from_db()
-
-        # Обновляем счётчики (теперь book.instances «видит» новые экземпляры)
+        # Пересчитываем количество экземпляров (total_copies и available_copies) для книги
         book.update_copies_count()
 
-        return Response({"status": "copies added", "total": book.total_copies, "available": book.available_copies})
+        # Возвращаем ответ клиенту
+        return Response(
+            {
+                "status": "copies added",
+                "total": book.total_copies,
+                "available": book.available_copies,
+                "created": created_count,
+            }
+        )
 
     def get_queryset(self):
         """
