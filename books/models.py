@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 
-User = get_user_model()  # Возвращает CustomUser
+User = get_user_model()
 
 
 class Book(models.Model):

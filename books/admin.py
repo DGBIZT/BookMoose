@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 
 from .models import Book
 
-User = get_user_model()  # Возвращает CustomUser
+User = get_user_model()
 
 
 @admin.register(Book)
@@ -21,7 +21,7 @@ class BookAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    list_display_links = ("title",)  # По клику — переход к редактированию
+    list_display_links = ("title",)  # По клику переход к редактированию
     ordering = ("title",)  # Сортировка по умолчанию
 
     # Фильтры в правой панели

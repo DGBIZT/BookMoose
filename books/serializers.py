@@ -4,32 +4,6 @@ from .models import Book, BookInstance
 
 
 class BookSerializer(serializers.ModelSerializer):
-    # # Явно определяем читаемые поля для внешних связей
-    # # Заглушки: поля примут ID, но не будут проверять существование объекта
-    # author = serializers.PrimaryKeyRelatedField(
-    #     queryset=None,  # Будет подключено позже
-    #     allow_null=True,
-    #     required=False,
-    #     help_text="ID автора (модель Author)"
-    # )
-    # genre = serializers.PrimaryKeyRelatedField(
-    #     queryset=None, # Будет подключено позже
-    #     allow_null=True,
-    #     required=False,
-    #     help_text="ID жанра (модель Genre)"
-    # )
-    # publisher = serializers.PrimaryKeyRelatedField(
-    #     queryset=None, # Будет подключено позже
-    #     allow_null=True,
-    #     required=False,
-    #     help_text="ID издательства (модель Publisher)"
-    # )
-    # series = serializers.PrimaryKeyRelatedField(
-    #     queryset=None, # Будет подключено позже
-    #     allow_null=True,
-    #     required=False,
-    #     help_text="ID серии (модель Series)"
-    # )
 
     created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
     author = serializers.SerializerMethodField()

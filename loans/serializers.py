@@ -77,7 +77,7 @@ class BookLoanSerializer(serializers.ModelSerializer):
             if due_date < loan_date:
                 raise serializers.ValidationError({"due_date": "Срок возврата не может быть раньше даты выдачи."})
 
-        return data  # Убрали проверку loan_date/created_by — DRF уже обработал read_only
+        return data
 
     def to_representation(self, instance):
         """

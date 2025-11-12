@@ -13,8 +13,8 @@ class BookLoan(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Экземпляр книги",
         help_text="Какой именно экземпляр выдан",
-        null=True,  # Теперь можно NULL
-        blank=True,  # Форма разрешает пустое значение
+        null=True,
+        blank=True,
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Читатель", help_text="Кто взял книгу")
     loan_date = models.DateTimeField(auto_now_add=True, verbose_name="Дата выдачи")
