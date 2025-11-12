@@ -24,10 +24,54 @@ services:
       POSTGRES_DB: ${DATABASE_NAME}
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_HOST_AUTH_METHOD: trust  # Добавьте эту строку
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
+
+  redis:
+    container_name: redis
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  celery:
+    container_name: celery
+    build: .
+    command: celery -A config worker -l info
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+
+  celery-beat:
+    container_name: celery-beat
+    build: .
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+      - celery
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
   static_volume:
+  redis_data:
