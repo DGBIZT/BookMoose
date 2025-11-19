@@ -137,3 +137,4 @@ jobs:
           docker-compose up -d
           docker system prune -f --filter "until=24h"
           echo "🚀 Application deployed successfully!"
+
