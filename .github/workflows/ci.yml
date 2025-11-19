@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.11-slim
-      options: --network=job_network
+
 
     services:
       postgres:
