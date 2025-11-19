@@ -7,13 +7,24 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/code
-      - static_volume:/code/static
+      - staticfiles:/app/staticfiles
     ports:
       - "8000:8000"
     depends_on:
       - db
     env_file:
       - .env
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - staticfiles:/app/staticfiles
+    depends_on:
+      - web
+
 
   db:
     container_name: db
@@ -73,5 +84,5 @@ services:
 
 volumes:
   postgres_data:
-  static_volume:
+  staticfiles:
   redis_data:
