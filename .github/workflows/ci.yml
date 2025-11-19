@@ -78,7 +78,7 @@ jobs:
       env:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
