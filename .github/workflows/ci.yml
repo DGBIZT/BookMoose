@@ -79,9 +79,9 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
         DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
-        REDIS_URL: redis://localhost:6379/0
-        CELERY_BROKER_URL: redis://localhost:6379/0
-        CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        REDIS_URL: redis://redis:6379/0
+        CELERY_BROKER_URL: redis://redis:6379/0
+        CELERY_RESULT_BACKEND: redis://redis:6379/0
         ALLOWED_HOSTS: localhost,127.0.0.1
       run: |
         coverage run --source='.' manage.py test
