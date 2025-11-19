@@ -74,6 +74,8 @@ jobs:
         exit 1
 
     - name: Verify PostgreSQL connection
+      env:
+        PGPASSWORD: postgres  # Явно задаём пароль для psql
       run: |
         psql -h localhost -U postgres -d test_db -c "SELECT version();"
 
