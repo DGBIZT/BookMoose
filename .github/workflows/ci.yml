@@ -80,6 +80,7 @@ jobs:
 
     - name: Run migrations
       env:
+        DATABASE_PASSWORD: '192168Os&$Python'
         SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-cd' }}
         DEBUG: 'True'
         DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/test_db
