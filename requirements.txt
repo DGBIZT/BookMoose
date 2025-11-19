@@ -51,6 +51,7 @@ platformdirs==4.5.0
 pluggy==1.6.0
 prompt_toolkit==3.0.52
 #psycopg2==2.9.11
+psycopg2-binary==2.9.11
 pure_eval==0.2.3
 pycodestyle==2.14.0
 pyflakes==3.4.0
