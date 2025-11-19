@@ -53,11 +53,11 @@ jobs:
       run: |
         pip install flake8 black isort
         echo "=== Flake8 ==="
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=120
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
         echo "=== Black ==="
-        black --check --diff --line-length=120 .
+        black --check --diff --config pyproject.toml .
         echo "=== Isort ==="
-        isort --check-only --profile=black .
+        isort --check-only --config pyproject.toml --profile=black .
 
     - name: Run migrations
       env:
