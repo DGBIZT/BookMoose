@@ -47,7 +47,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install coverage flake8 black isort dj-database-url
+        pip install coverage flake8 black isort dj-database-url psycopg2-binary
 
     - name: Run linting
       run: |
@@ -58,41 +58,45 @@ jobs:
         echo "=== Isort ==="
         isort --check-only --profile=black .
 
-    - name: Wait for PostgreSQL to be ready
+
+    - name: Wait for PostgreSQL to be ready (with retry)
       run: |
-        for i in {1..60}; do
+        max_retries=20
+        for i in $(seq 1 $max_retries); do
           if pg_isready -h localhost -p 5432 -U postgres; then
             echo "PostgreSQL is ready!"
-            break
+            exit 0
           fi
-          echo "Waiting for PostgreSQL... ($i/60)"
-          sleep 2
+          echo "Attempt $i/$max_retries: PostgreSQL not ready, waiting 5s..."
+          sleep 5
         done
-        if ! pg_isready -h localhost -p 5432 -U postgres; then
-          echo "PostgreSQL failed to start!"
-          exit 1
-        fi
+        echo "PostgreSQL failed to start after $max_retries attempts!"
+        exit 1
+
+    - name: Verify PostgreSQL connection
+      run: |
+        psql -h localhost -U postgres -d test_db -c "SELECT version();"
+
 
     - name: Run migrations
       env:
         SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-cd' }}
         DEBUG: 'True'
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
         ALLOWED_HOSTS: localhost,127.0.0.1
       run: |
-        # Явно указываем настройки БД через переменные окружения
         python manage.py migrate
 
     - name: Run tests with coverage
       env:
         SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-cd' }}
         DEBUG: 'True'
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
-        CELERY_BROKER_URL: redis://localhost:6379/Desktop
+        CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
         ALLOWED_HOSTS: localhost,127.0.0.1
       run: |
