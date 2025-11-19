@@ -76,6 +76,8 @@ jobs:
         done
 
     - name: Verify database connection
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
       run: |
         pip install psycopg2-binary
         python -c "
