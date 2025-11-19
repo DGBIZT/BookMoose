@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
+      options: --network=job_network
 
     services:
       postgres:
@@ -68,7 +71,6 @@ jobs:
           sleep 2
         done
         
-        # Ждём готовности Redis
         for i in {1..30}; do
           redis-cli -h redis -p 6379 ping && break
           echo "Redis not ready, waiting... ($i)"
