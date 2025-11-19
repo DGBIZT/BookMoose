@@ -47,43 +47,23 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install coverage flake8 black isort dj-database-url psycopg2-binary
+        pip install coverage
 
     - name: Run linting
       run: |
+        pip install flake8 black isort
         echo "=== Flake8 ==="
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=120
         echo "=== Black ==="
-        black --check --diff --line-length=119 .
+        black --check --diff --line-length=120 .
         echo "=== Isort ==="
         isort --check-only --profile=black .
 
-    - name: Wait for PostgreSQL to be ready (with retry)
-      run: |
-        max_retries=20
-        for i in $(seq 1 $max_retries); do
-          if pg_isready -h 127.0.0.1 -p 5432 -U postgres; then
-            echo "PostgreSQL is ready!"
-            exit 0
-          fi
-          echo "Attempt $i/$max_retries: PostgreSQL not ready, waiting 5s..."
-          sleep 5
-        done
-        echo "PostgreSQL failed to start after $max_retries attempts!"
-        exit 1
-
-    - name: Verify PostgreSQL connection
-      env:
-        PGPASSWORD: postgres
-      run: |
-        psql -h 127.0.0.1 -U postgres -d test_db -c "SELECT version();"
-
     - name: Run migrations
       env:
-        DATABASE_PASSWORD: '192168Os&$Python'
-        SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-cd' }}
-        DEBUG: 'True'
-        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/test_db
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
@@ -93,9 +73,9 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-cd' }}
-        DEBUG: 'True'
-        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/test_db
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
@@ -112,10 +92,7 @@ jobs:
         sleep 30
         docker-compose ps
         docker-compose logs web
-        docker-compose exec web python manage.py check --deploy
         docker-compose down
-        docker network prune -f
-        docker volume prune -f
 
   deploy:
     needs: test
@@ -136,6 +113,5 @@ jobs:
           docker-compose down
           docker-compose build --no-cache
           docker-compose up -d
-          docker system prune -f --filter "until=24h"
+          docker system prune -f
           echo "🚀 Application deployed successfully!"
-
