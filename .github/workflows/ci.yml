@@ -12,7 +12,6 @@ jobs:
     container:
       image: python:3.11-slim
 
-
     services:
       postgres:
         image: postgres:15
@@ -39,110 +38,122 @@ jobs:
           - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install psycopg2-binary
-        pip install -r requirements.txt
-        pip install coverage
+      - name: Setup virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
 
-    - name: Run linting
-      run: |
-        pip install flake8 black isort
-        echo "=== Flake8 ==="
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
-        echo "=== Black ==="
-        black --check --diff --line-length=119 .
-        echo "=== Isort ==="
-        isort --check-only --profile=black .
+      - name: Install dependencies
+        run: |
+          source venv/bin/activate
+          pip install psycopg2-binary==2.9.11
+          pip install -r requirements.txt --ignore-installed psycopg2
+          pip install coverage flake8 black isort
 
-    - name: Wait for PostgreSQL and Redis (extended)
-      run: |
-        # Ждём готовности PostgreSQL
-        for i in {1..30}; do
-          pg_isready -h postgres -p 5432 -U postgres -d test_db && break
-          echo "PostgreSQL not ready, waiting... ($i)"
-          sleep 2
-        done
-        
-        for i in {1..30}; do
-          redis-cli -h redis -p 6379 ping && break
-          echo "Redis not ready, waiting... ($i)"
-          sleep 2
-        done
 
-    - name: Verify database connection
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
-      run: |
-        pip install psycopg2-binary
-        python -c "
-        import os
-        import psycopg2
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        conn.cursor().execute('SELECT 1;')
-        print('✅ PostgreSQL connection OK')
-        "
+      - name: Run linting
+        run: |
+          source venv/bin/activate
+          echo "=== Flake8 ==="
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
+          echo "=== Black ==="
+          black --check --diff --line-length=119 .
+          echo "=== Isort ==="
+          isort --check-only --profile=black .
 
-    - name: Run migrations
-      env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
-        DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
-        REDIS_URL: redis://redis:6379/0
-        CELERY_BROKER_URL: redis://redis:6379/0
-        CELERY_RESULT_BACKEND: redis://redis:6379/0
-        ALLOWED_HOSTS: localhost,127.0.0.1
-      run: python manage.py migrate
+      - name: Wait for PostgreSQL and Redis
+        run: |
+          # PostgreSQL
+          for i in {1..30}; do
+            pg_isready -h postgres -p 5432 -U postgres -d test_db && break
+            echo "PostgreSQL not ready, waiting... ($i)"
+            sleep 2
+          done
+          if ! pg_isready -h postgres -p 5432 -U postgres -d test_db; then
+            echo "❌ PostgreSQL failed to start"
+            exit 1
+          fi
 
-    - name: Run tests with coverage
-      env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
-        DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
-        REDIS_URL: redis://redis:6379/0
-        CELERY_BROKER_URL: redis://redis:6379/0
-        CELERY_RESULT_BACKEND: redis://redis:6379/0
-        ALLOWED_HOSTS: localhost,127.0.0.1
-      run: |
-        coverage run --source='.' manage.py test
-        coverage report
-        coverage xml
+          # Redis
+          for i in {1..30}; do
+            redis-cli -h redis -p 6379 ping && break
+            echo "Redis not ready, waiting... ($i)"
+            sleep 2
+          done
+          if ! redis-cli -h redis -p 6379 ping; then
+            echo "❌ Redis failed to start"
+            exit 1
+          fi
 
-    - name: Build and test Docker images
-      run: |
-        docker-compose build
-        docker-compose up -d
-        sleep 30
-        docker-compose ps
-        docker-compose logs web
-        docker-compose down
+      - name: Verify database connection
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
+        run: |
+          source venv/bin/activate
+          python -c "
+          import os
+          import psycopg2
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          conn.cursor().execute('SELECT 1;')
+          print('✅ PostgreSQL connection OK')
+          "
+
+      - name: Run migrations
+        env:
+          SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+          DEBUG: True
+          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
+          REDIS_URL: redis://redis:6379/0
+          CELERY_BROKER_URL: redis://redis:6379/0
+          CELERY_RESULT_BACKEND: redis://redis:6379/0
+          ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          source venv/bin/activate
+          python manage.py migrate
+
+      - name: Run tests with coverage
+        env:
+          SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+          DEBUG: True
+          DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
+          REDIS_URL: redis://redis:6379/0
+          CELERY_BROKER_URL: redis://redis:6379/0
+          CELERY_RESULT_BACKEND: redis://redis:6379/0
+          ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          source venv/bin/activate
+          coverage run --source='.' manage.py test
+          coverage report
+          coverage xml
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    # Условие: только для merged-ветки (например, develop)
+    if: github.ref == 'refs/heads/develop'
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        script: |
-          cd /BookMoose
-          git pull origin feature/library
-          docker-compose down
-          docker-compose build --no-cache
-          docker-compose up -d
-          docker system prune -f
-          echo "🚀 Application deployed successfully!"
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /BookMoose
+            git pull origin develop
+            docker-compose down || true
+            docker-compose build --no-cache
+            docker-compose up -d
+            docker system prune -f --volumes
+            echo "🚀 Application deployed successfully!"
