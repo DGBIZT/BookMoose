@@ -21,7 +21,7 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 10  # Увеличено до 10 попыток
+          --health-retries 10
         ports:
           - 5432:5432
 
@@ -31,7 +31,7 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 10  # Увеличено до 10 попыток
+          --health-retries 10
         ports:
           - 6379:6379
 
