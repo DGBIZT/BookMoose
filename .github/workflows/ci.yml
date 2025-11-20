@@ -80,7 +80,7 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        SECRET_KEY: test-secret-key-for-ci-cd
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: postgres
@@ -111,7 +111,7 @@ jobs:
         EMAIL_HOST_PASSWORD: test
       run: |
         # Create temporary .env file for Docker Compose
-        cat > .env << EOF
+        cat > .env << 'ENVEOF'
         DATABASE_NAME=test_db
         DATABASE_USER=postgres
         DATABASE_PASSWORD=postgres
@@ -125,14 +125,26 @@ jobs:
         CELERY_RESULT_BACKEND=redis://redis:6379/0
         EMAIL_HOST_USER=test@example.com
         EMAIL_HOST_PASSWORD=test
-        EOF
- 
-        docker compose build
-        docker compose up -d
+        ENVEOF
+        
+        # Create a temporary docker-compose override file to change ports
+        cat > docker-compose.ci.yml << 'COMPOSEEOF'
+        services:
+          db:
+            ports:
+              - "5433:5432"
+          redis:
+            ports:
+              - "6380:6379"
+        COMPOSEEOF
+        
+        # Use both docker-compose.yml and docker-compose.ci.yml
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml build
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
         sleep 30
-        docker compose ps
-        docker compose logs web
-        docker compose down
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml ps
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml logs web
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml down
 
   deploy:
     needs: test
@@ -151,31 +163,31 @@ jobs:
         script: |
           set -e  # Exit on error
           echo "🚀 Starting deployment..."
- 
+          
           cd /BookMoose
- 
+          
           echo "📥 Pulling latest changes..."
           git pull origin feature/library
- 
+          
           echo "🛑 Stopping containers..."
           docker-compose down
- 
+          
           echo "🔨 Building new images..."
           docker-compose build --no-cache
- 
+          
           echo "▶️ Starting containers..."
           docker-compose up -d
- 
+          
           echo "⏳ Waiting for services to be ready..."
           sleep 10
- 
+          
           echo "📊 Applying database migrations..."
           docker-compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
- 
+          
           echo "🧹 Cleaning up unused Docker resources..."
           docker system prune -f
- 
+          
           echo "✅ Checking container status..."
           docker-compose ps
- 
+          
           echo "🚀 Application deployed successfully!"
