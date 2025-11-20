@@ -97,7 +97,36 @@ jobs:
         coverage xml
 
     - name: Build and test Docker images
+      env:
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        SECRET_KEY: test-secret-key-for-docker-build
+        DEBUG: True
+        ALLOWED_HOSTS: localhost,127.0.0.1
+        REDIS_URL: redis://redis:6379/0
+        CELERY_BROKER_URL: redis://redis:6379/0
+        CELERY_RESULT_BACKEND: redis://redis:6379/0
+        EMAIL_HOST_USER: test@example.com
+        EMAIL_HOST_PASSWORD: test
       run: |
+        # Create temporary .env file for Docker Compose
+        cat > .env << EOF
+        DATABASE_NAME=test_db
+        DATABASE_USER=postgres
+        DATABASE_PASSWORD=postgres
+        DATABASE_HOST=db
+        DATABASE_PORT=5432
+        SECRET_KEY=test-secret-key-for-docker-build
+        DEBUG=True
+        ALLOWED_HOSTS=localhost,127.0.0.1
+        REDIS_URL=redis://redis:6379/0
+        CELERY_BROKER_URL=redis://redis:6379/0
+        CELERY_RESULT_BACKEND=redis://redis:6379/0
+        EMAIL_HOST_USER=test@example.com
+        EMAIL_HOST_PASSWORD=test
+        EOF
+ 
         docker compose build
         docker compose up -d
         sleep 30
@@ -108,6 +137,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/library'
 
     steps:
     - uses: actions/checkout@v4
@@ -119,10 +149,33 @@ jobs:
         username: ${{ secrets.SERVER_USERNAME }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
+          set -e  # Exit on error
+          echo "🚀 Starting deployment..."
+ 
           cd /BookMoose
+ 
+          echo "📥 Pulling latest changes..."
           git pull origin feature/library
-          docker compose down
-          docker compose build --no-cache
-          docker compose up -d
+ 
+          echo "🛑 Stopping containers..."
+          docker-compose down
+ 
+          echo "🔨 Building new images..."
+          docker-compose build --no-cache
+ 
+          echo "▶️ Starting containers..."
+          docker-compose up -d
+ 
+          echo "⏳ Waiting for services to be ready..."
+          sleep 10
+ 
+          echo "📊 Applying database migrations..."
+          docker-compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
+ 
+          echo "🧹 Cleaning up unused Docker resources..."
           docker system prune -f
+ 
+          echo "✅ Checking container status..."
+          docker-compose ps
+ 
           echo "🚀 Application deployed successfully!"
