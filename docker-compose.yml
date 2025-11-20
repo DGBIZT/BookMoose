@@ -111,7 +111,7 @@ jobs:
         EMAIL_HOST_PASSWORD: test
       run: |
         # Create temporary .env file for Docker Compose
-        cat > .env << EOF
+        cat > .env << 'ENVEOF'
         DATABASE_NAME=test_db
         DATABASE_USER=postgres
         DATABASE_PASSWORD=postgres
@@ -125,10 +125,10 @@ jobs:
         CELERY_RESULT_BACKEND=redis://redis:6379/0
         EMAIL_HOST_USER=test@example.com
         EMAIL_HOST_PASSWORD=test
-        EOF
+        ENVEOF
         
         # Create a temporary docker-compose override file to change ports
-        cat > docker-compose.ci.yml << EOF
+        cat > docker-compose.ci.yml << 'COMPOSEEOF'
         services:
           db:
             ports:
@@ -136,7 +136,7 @@ jobs:
           redis:
             ports:
               - "6380:6379"
-        EOF
+        COMPOSEEOF
         
         # Use both docker-compose.yml and docker-compose.ci.yml
         docker compose -f docker-compose.yml -f docker-compose.ci.yml build
