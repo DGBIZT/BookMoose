@@ -1,0 +1,125 @@
+name: CI/CD Pipeline
+
+on:
+ push:
+ branches: ["feature/library"]
+ pull_request:
+ branches: ["develop"]
+
+jobs:
+ test:
+ runs-on: ubuntu-latest
+
+ services:
+ postgres:
+ image: postgres:15
+ env:
+ POSTGRES_USER: postgres
+ POSTGRES_PASSWORD: postgres
+ POSTGRES_DB: test_db
+ options: >- 
+ --health-cmd pg_isready 
+ --health-interval 10s 
+ --health-timeout 5s 
+ --health-retries 5
+ ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install coverage
+
+    - name: Run linting
+      run: |
+        pip install flake8 black isort
+        echo "=== Flake8 ==="
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
+        echo "=== Black ==="
+        black --check --diff --line-length=119 .
+        echo "=== Isort ==="
+        isort --check-only --profile=black .
+
+    - name: Run migrations
+      env:
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+        REDIS_URL: redis://localhost:6379/0
+        CELERY_BROKER_URL: redis://localhost:6379/0
+        CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        ALLOWED_HOSTS: localhost,127.0.0.1
+      run: |
+        python manage.py migrate
+
+    - name: Run tests with coverage
+      env:
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+        REDIS_URL: redis://localhost:6379/0
+        CELERY_BROKER_URL: redis://localhost:6379/0
+        CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        ALLOWED_HOSTS: localhost,127.0.0.1
+      run: |
+        coverage run --source='.' manage.py test
+        coverage report
+        coverage xml
+
+    - name: Build and test Docker images
+      run: |
+        docker-compose build
+        docker-compose up -d
+        sleep 30
+        docker-compose ps
+        docker-compose logs web
+        docker-compose down
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /BookMoose
+          git pull origin feature/library
+          docker-compose down
+          docker-compose build --no-cache
+          docker-compose up -d
+          docker system prune -f
+          echo "🚀 Application deployed successfully!"
