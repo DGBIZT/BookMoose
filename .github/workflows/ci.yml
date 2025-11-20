@@ -2,9 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["feature/library"]
+    branches:
+      - feature/library
   pull_request:
-    branches: ["develop"]
+    branches:
+      - develop
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
   test:
@@ -63,7 +66,11 @@ jobs:
       env:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
@@ -75,7 +82,11 @@ jobs:
       env:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
