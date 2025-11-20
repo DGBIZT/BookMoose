@@ -190,24 +190,24 @@ jobs:
           fi
           
           echo "🛑 Stopping containers..."
-          docker-compose down
+          docker compose down
           
           echo "🔨 Building new images..."
-          docker-compose build --no-cache
+          docker compose build --no-cache
           
           echo "▶️ Starting containers..."
-          docker-compose up -d
+          docker compose up -d
           
           echo "⏳ Waiting for services to be ready..."
           sleep 10
           
           echo "📊 Applying database migrations..."
-          docker-compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
+          docker compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
           
           echo "🧹 Cleaning up unused Docker resources..."
           docker system prune -f
           
           echo "✅ Checking container status..."
-          docker-compose ps
+          docker compose ps
           
           echo "🚀 Application deployed successfully!"
