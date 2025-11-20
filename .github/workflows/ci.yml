@@ -64,7 +64,7 @@ jobs:
 
     - name: Run migrations
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        SECRET_KEY: test-secret-key-for-ci-cd
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: postgres
@@ -164,10 +164,30 @@ jobs:
           set -e  # Exit on error
           echo "🚀 Starting deployment..."
           
-          cd /BookMoose
+          # Get current user (works in SSH session)
+          CURRENT_USER=$(whoami)
+          DEPLOY_DIR="/BookMoose"
           
-          echo "📥 Pulling latest changes..."
-          git pull origin feature/library
+          # Create directory if it doesn't exist
+          if [ ! -d "$DEPLOY_DIR" ]; then
+            echo "📁 Creating $DEPLOY_DIR directory..."
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo chown $CURRENT_USER:$CURRENT_USER "$DEPLOY_DIR"
+          fi
+          
+          cd "$DEPLOY_DIR"
+          
+          # Clone repository if it doesn't exist or is empty
+          if [ ! -d ".git" ]; then
+            echo "📥 Cloning repository..."
+            git clone https://github.com/DGBIZT/BookMoose.git .
+            git checkout feature/library || git checkout -b feature/library origin/feature/library
+          else
+            echo "📥 Pulling latest changes..."
+            git fetch origin
+            git checkout feature/library || git checkout -b feature/library origin/feature/library
+            git pull origin feature/library
+          fi
           
           echo "🛑 Stopping containers..."
           docker-compose down
