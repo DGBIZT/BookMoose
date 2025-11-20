@@ -8,27 +8,22 @@ services:
     volumes:
       - .:/code
       - staticfiles:/app/staticfiles
-    expose:
-      - 8000  # Только внутри сети Docker
-    env_file:
-      - .env
+    ports:
+      - "8000:8000"
     depends_on:
       - db
+    env_file:
+      - .env
 
   nginx:
     image: nginx:stable-alpine
     ports:
-      - "80:80"  # Открытый порт 80 на хосте
+      - '80:80'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - staticfiles:/app/staticfiles
     depends_on:
       - web
-    healthcheck:  # Проверка готовности web
-      test: ["CMD", "curl", "-f", "http://web:8000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 
   db:
