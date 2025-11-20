@@ -1,28 +1,28 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: ["feature/library"]
-  pull_request:
-    branches: ["develop"]
+ push:
+ branches: ["feature/library"]
+ pull_request:
+ branches: ["develop"]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+ test:
+ runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
+ services:
+ postgres:
+ image: postgres:15
+ env:
+ POSTGRES_USER: postgres
+ POSTGRES_PASSWORD: postgres
+ POSTGRES_DB: test_db
+ options: >- 
+ --health-cmd pg_isready 
+ --health-interval 10s 
+ --health-timeout 5s 
+ --health-retries 5
+ ports:
           - 5432:5432
 
       redis:
@@ -63,7 +63,11 @@ jobs:
       env:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
@@ -75,7 +79,11 @@ jobs:
       env:
         SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
         DEBUG: True
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
         CELERY_BROKER_URL: redis://localhost:6379/0
         CELERY_RESULT_BACKEND: redis://localhost:6379/0
