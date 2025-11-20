@@ -1,87 +1,193 @@
+name: CI/CD Pipeline
 
-services:
-  web:
-    container_name: web
-    build: .
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/code
-      - staticfiles:/app/staticfiles
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    env_file:
-      - .env
+on:
+  push:
+    branches:
+      - feature/library
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
-  nginx:
-    image: nginx:stable-alpine
-    ports:
-      - '80:80'
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - staticfiles:/app/staticfiles
-    depends_on:
-      - web
+jobs:
+  test:
+    runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
-  db:
-    container_name: db
-    image: postgres:16.0
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${DATABASE_NAME}
-      POSTGRES_USER: ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - "5432:5432"
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
-  redis:
-    container_name: redis
-    image: redis:7.4-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+    steps:
+    - uses: actions/checkout@v4
 
-  celery:
-    container_name: celery
-    build: .
-    command: celery -A config worker -l info
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
-      - PYTHONPATH=/code
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-    volumes:
-      - .:/code
-    depends_on:
-      - db
-      - redis
-    env_file:
-      - .env
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-  celery-beat:
-    container_name: celery-beat
-    build: .
-    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
-      - PYTHONPATH=/code
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-    volumes:
-      - .:/code
-    depends_on:
-      - db
-      - redis
-      - celery
-    env_file:
-      - .env
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install coverage
 
-volumes:
-  postgres_data:
-  staticfiles:
-  redis_data:
+    - name: Run linting
+      run: |
+        pip install flake8 black isort
+        echo "=== Flake8 ==="
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=119
+        echo "=== Black ==="
+        black --check --diff --line-length=119 .
+        echo "=== Isort ==="
+        isort --check-only --profile=black .
+
+    - name: Run migrations
+      env:
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+        REDIS_URL: redis://localhost:6379/0
+        CELERY_BROKER_URL: redis://localhost:6379/0
+        CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        ALLOWED_HOSTS: localhost,127.0.0.1
+      run: |
+        python manage.py migrate
+
+    - name: Run tests with coverage
+      env:
+        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        DEBUG: True
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+        REDIS_URL: redis://localhost:6379/0
+        CELERY_BROKER_URL: redis://localhost:6379/0
+        CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        ALLOWED_HOSTS: localhost,127.0.0.1
+      run: |
+        coverage run --source='.' manage.py test
+        coverage report
+        coverage xml
+
+    - name: Build and test Docker images
+      env:
+        DATABASE_NAME: test_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        SECRET_KEY: test-secret-key-for-docker-build
+        DEBUG: True
+        ALLOWED_HOSTS: localhost,127.0.0.1
+        REDIS_URL: redis://redis:6379/0
+        CELERY_BROKER_URL: redis://redis:6379/0
+        CELERY_RESULT_BACKEND: redis://redis:6379/0
+        EMAIL_HOST_USER: test@example.com
+        EMAIL_HOST_PASSWORD: test
+      run: |
+        # Create temporary .env file for Docker Compose
+        cat > .env << EOF
+        DATABASE_NAME=test_db
+        DATABASE_USER=postgres
+        DATABASE_PASSWORD=postgres
+        DATABASE_HOST=db
+        DATABASE_PORT=5432
+        SECRET_KEY=test-secret-key-for-docker-build
+        DEBUG=True
+        ALLOWED_HOSTS=localhost,127.0.0.1
+        REDIS_URL=redis://redis:6379/0
+        CELERY_BROKER_URL=redis://redis:6379/0
+        CELERY_RESULT_BACKEND=redis://redis:6379/0
+        EMAIL_HOST_USER=test@example.com
+        EMAIL_HOST_PASSWORD=test
+        EOF
+        
+        # Create a temporary docker-compose override file to change ports
+        cat > docker-compose.ci.yml << EOF
+        services:
+          db:
+            ports:
+              - "5433:5432"
+          redis:
+            ports:
+              - "6380:6379"
+        EOF
+        
+        # Use both docker-compose.yml and docker-compose.ci.yml
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml build
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+        sleep 30
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml ps
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml logs web
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml down
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/library'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          set -e  # Exit on error
+          echo "🚀 Starting deployment..."
+          
+          cd /BookMoose
+          
+          echo "📥 Pulling latest changes..."
+          git pull origin feature/library
+          
+          echo "🛑 Stopping containers..."
+          docker-compose down
+          
+          echo "🔨 Building new images..."
+          docker-compose build --no-cache
+          
+          echo "▶️ Starting containers..."
+          docker-compose up -d
+          
+          echo "⏳ Waiting for services to be ready..."
+          sleep 10
+          
+          echo "📊 Applying database migrations..."
+          docker-compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
+          
+          echo "🧹 Cleaning up unused Docker resources..."
+          docker system prune -f
+          
+          echo "✅ Checking container status..."
+          docker-compose ps
+          
+          echo "🚀 Application deployed successfully!"
