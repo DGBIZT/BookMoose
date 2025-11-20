@@ -166,7 +166,7 @@ jobs:
           
           # Get current user (works in SSH session)
           CURRENT_USER=$(whoami)
-          DEPLOY_DIR="/BookMoose"
+          DEPLOY_DIR="/home/georg/BookMoose"
           
           # Create directory if it doesn't exist
           if [ ! -d "$DEPLOY_DIR" ]; then
