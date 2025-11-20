@@ -127,24 +127,24 @@ jobs:
         EMAIL_HOST_PASSWORD=test
         ENVEOF
         
-        # Create a temporary docker-compose override file to change ports
-        cat > docker-compose.ci.yml << 'COMPOSEEOF'
-        services:
-          db:
-            ports:
-              - "5433:5432"
-          redis:
-            ports:
-              - "6380:6379"
-        COMPOSEEOF
+        # Temporarily change ports in docker-compose.yml to avoid conflicts with GitHub Actions services
+        cp docker-compose.yml docker-compose.yml.bak
+        sed -i 's/- "5432:5432"/- "5433:5432"/' docker-compose.yml
+        sed -i 's/- "6379:6379"/- "6380:6379"/' docker-compose.yml
         
-        # Use both docker-compose.yml and docker-compose.ci.yml
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml build
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+        # Ensure we restore the file even if something fails
+        trap 'mv docker-compose.yml.bak docker-compose.yml 2>/dev/null || true' EXIT
+        
+        # Build and test Docker images
+        docker compose build
+        docker compose up -d
         sleep 30
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml ps
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml logs web
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml down
+        docker compose ps
+        docker compose logs web
+        docker compose down
+        
+        # Restore original docker-compose.yml
+        mv docker-compose.yml.bak docker-compose.yml
 
   deploy:
     needs: test
