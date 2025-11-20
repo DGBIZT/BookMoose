@@ -110,22 +110,22 @@ jobs:
         EMAIL_HOST_USER: test@example.com
         EMAIL_HOST_PASSWORD: test
       run: |
-        # # Create temporary .env file for Docker Compose
-        # cat > .env << 'ENVEOF'
-        # DATABASE_NAME=test_db
-        # DATABASE_USER=postgres
-        # DATABASE_PASSWORD=postgres
-        # DATABASE_HOST=db
-        # DATABASE_PORT=5432
-        # SECRET_KEY=test-secret-key-for-docker-build
-        # DEBUG=True
-        # ALLOWED_HOSTS=localhost,127.0.0.1
-        # REDIS_URL=redis://redis:6379/0
-        # CELERY_BROKER_URL=redis://redis:6379/0
-        # CELERY_RESULT_BACKEND=redis://redis:6379/0
-        # EMAIL_HOST_USER=test@example.com
-        # EMAIL_HOST_PASSWORD=test
-        # ENVEOF
+        # Create temporary .env file for Docker Compose
+        cat > .env << 'ENVEOF'
+        DATABASE_NAME=test_db
+        DATABASE_USER=postgres
+        DATABASE_PASSWORD=postgres
+        DATABASE_HOST=db
+        DATABASE_PORT=5432
+        SECRET_KEY=test-secret-key-for-docker-build
+        DEBUG=True
+        ALLOWED_HOSTS=localhost,127.0.0.1
+        REDIS_URL=redis://redis:6379/0
+        CELERY_BROKER_URL=redis://redis:6379/0
+        CELERY_RESULT_BACKEND=redis://redis:6379/0
+        EMAIL_HOST_USER=test@example.com
+        EMAIL_HOST_PASSWORD=test
+        ENVEOF
         
         # Temporarily change ports in docker-compose.yml to avoid conflicts with GitHub Actions services
         cp docker-compose.yml docker-compose.yml.bak
