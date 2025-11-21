@@ -64,7 +64,7 @@ jobs:
 
     - name: Run migrations
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: ${{ secrets.POSTGRES }}
@@ -80,7 +80,7 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: ${{ secrets.POSTGRES }}
@@ -101,7 +101,7 @@ jobs:
         DATABASE_NAME: test_db
         DATABASE_USER: ${{ secrets.POSTGRES }}
         DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
-        SECRET_KEY: test-secret-key-for-docker-build
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
         DEBUG: True
         ALLOWED_HOSTS: localhost,127.0.0.1
         REDIS_URL: redis://redis:6379/0
@@ -117,7 +117,7 @@ jobs:
         DATABASE_PASSWORD=${{ secrets.POSTGRES }}
         DATABASE_HOST=db
         DATABASE_PORT=5432
-        SECRET_KEY=test-secret-key-for-docker-build
+        SECRET_KEY=${{ secrets.SECRETKEY }}
         DEBUG=True
         ALLOWED_HOSTS=localhost,127.0.0.1
         REDIS_URL=redis://redis:6379/0
