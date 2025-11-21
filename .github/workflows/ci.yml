@@ -17,8 +17,8 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: ${{ secrets.POSTGRES }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES }}
           POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
@@ -67,8 +67,8 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci-cd
         DEBUG: True
         DATABASE_NAME: test_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -83,8 +83,8 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci-cd
         DEBUG: True
         DATABASE_NAME: test_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -99,8 +99,8 @@ jobs:
     - name: Build and test Docker images
       env:
         DATABASE_NAME: test_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
         SECRET_KEY: test-secret-key-for-docker-build
         DEBUG: True
         ALLOWED_HOSTS: localhost,127.0.0.1
@@ -113,8 +113,8 @@ jobs:
         # Create temporary .env file for Docker Compose
         cat > .env << 'ENVEOF'
         DATABASE_NAME=test_db
-        DATABASE_USER=postgres
-        DATABASE_PASSWORD=postgres
+        DATABASE_USER=${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD=${{ secrets.POSTGRES }}
         DATABASE_HOST=db
         DATABASE_PORT=5432
         SECRET_KEY=test-secret-key-for-docker-build
