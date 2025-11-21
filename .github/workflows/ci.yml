@@ -18,7 +18,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
@@ -64,11 +64,11 @@ jobs:
 
     - name: Run migrations
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -80,11 +80,11 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
         DEBUG: True
         DATABASE_NAME: test_db
         DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -100,8 +100,8 @@ jobs:
       env:
         DATABASE_NAME: test_db
         DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
-        SECRET_KEY: test-secret-key-for-docker-build
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
         DEBUG: True
         ALLOWED_HOSTS: localhost,127.0.0.1
         REDIS_URL: redis://redis:6379/0
@@ -114,17 +114,17 @@ jobs:
         cat > .env << 'ENVEOF'
         DATABASE_NAME=test_db
         DATABASE_USER=postgres
-        DATABASE_PASSWORD=postgres
+        DATABASE_PASSWORD=${DATABASE_PASSWORD}
         DATABASE_HOST=db
         DATABASE_PORT=5432
-        SECRET_KEY=test-secret-key-for-docker-build
+        SECRET_KEY=${SECRET_KEY}
         DEBUG=True
         ALLOWED_HOSTS=localhost,127.0.0.1
         REDIS_URL=redis://redis:6379/0
         CELERY_BROKER_URL=redis://redis:6379/0
         CELERY_RESULT_BACKEND=redis://redis:6379/0
-        EMAIL_HOST_USER=test@example.com
-        EMAIL_HOST_PASSWORD=test
+        EMAIL_HOST_USER=${EMAIL_HOST_USER}
+        EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
         ENVEOF
         
         # Temporarily change ports in docker-compose.yml to avoid conflicts with GitHub Actions services
