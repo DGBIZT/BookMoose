@@ -1,28 +1,31 @@
 name: CI/CD Pipeline
 
 on:
- push:
- branches: ["feature/library"]
- pull_request:
- branches: ["develop"]
+  push:
+    branches:
+      - feature/library
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
- test:
- runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-latest
 
- services:
- postgres:
- image: postgres:15
- env:
- POSTGRES_USER: postgres
- POSTGRES_PASSWORD: postgres
- POSTGRES_DB: test_db
- options: >- 
- --health-cmd pg_isready 
- --health-interval 10s 
- --health-timeout 5s 
- --health-retries 5
- ports:
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES }}
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
           - 5432:5432
 
       redis:
@@ -61,11 +64,11 @@ jobs:
 
     - name: Run migrations
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
         DEBUG: True
         DATABASE_NAME: test_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -77,11 +80,11 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        SECRET_KEY: test-secret-key-for-ci-cd-${{ github.run_id }}
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
         DEBUG: True
         DATABASE_NAME: test_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
         DATABASE_HOST: localhost
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
@@ -94,17 +97,59 @@ jobs:
         coverage xml
 
     - name: Build and test Docker images
+      env:
+        DATABASE_NAME: test_db
+        DATABASE_USER: ${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD: ${{ secrets.POSTGRES }}
+        SECRET_KEY: ${{ secrets.SECRETKEY }}
+        DEBUG: True
+        ALLOWED_HOSTS: localhost,127.0.0.1
+        REDIS_URL: redis://redis:6379/0
+        CELERY_BROKER_URL: redis://redis:6379/0
+        CELERY_RESULT_BACKEND: redis://redis:6379/0
+        EMAIL_HOST_USER: test@example.com
+        EMAIL_HOST_PASSWORD: test
       run: |
-        docker-compose build
-        docker-compose up -d
+        # Create temporary .env file for Docker Compose
+        cat > .env << 'ENVEOF'
+        DATABASE_NAME=test_db
+        DATABASE_USER=${{ secrets.POSTGRES }}
+        DATABASE_PASSWORD=${{ secrets.POSTGRES }}
+        DATABASE_HOST=db
+        DATABASE_PORT=5432
+        SECRET_KEY=${{ secrets.SECRETKEY }}
+        DEBUG=True
+        ALLOWED_HOSTS=localhost,127.0.0.1
+        REDIS_URL=redis://redis:6379/0
+        CELERY_BROKER_URL=redis://redis:6379/0
+        CELERY_RESULT_BACKEND=redis://redis:6379/0
+        EMAIL_HOST_USER=test@example.com
+        EMAIL_HOST_PASSWORD=test
+        ENVEOF
+        
+        # Temporarily change ports in docker-compose.yml to avoid conflicts with GitHub Actions services
+        cp docker-compose.yml docker-compose.yml.bak
+        sed -i 's/- "5432:5432"/- "5433:5432"/' docker-compose.yml
+        sed -i 's/- "6379:6379"/- "6380:6379"/' docker-compose.yml
+        
+        # Ensure we restore the file even if something fails
+        trap 'mv docker-compose.yml.bak docker-compose.yml 2>/dev/null || true' EXIT
+        
+        # Build and test Docker images
+        docker compose build
+        docker compose up -d
         sleep 30
-        docker-compose ps
-        docker-compose logs web
-        docker-compose down
+        docker compose ps
+        docker compose logs web
+        docker compose down
+        
+        # Restore original docker-compose.yml
+        mv docker-compose.yml.bak docker-compose.yml
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/library'
 
     steps:
     - uses: actions/checkout@v4
@@ -116,10 +161,53 @@ jobs:
         username: ${{ secrets.SERVER_USERNAME }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
-          cd /BookMoose
-          git pull origin feature/library
+          set -e  # Exit on error
+          echo "🚀 Starting deployment..."
+          
+          # Get current user (works in SSH session)
+          CURRENT_USER=$(whoami)
+          DEPLOY_DIR="/home/georg/BookMoose"
+          
+          # Create directory if it doesn't exist
+          if [ ! -d "$DEPLOY_DIR" ]; then
+            echo "📁 Creating $DEPLOY_DIR directory..."
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo chown $CURRENT_USER:$CURRENT_USER "$DEPLOY_DIR"
+          fi
+          
+          cd "$DEPLOY_DIR"
+          
+          # Clone repository if it doesn't exist or is empty
+          if [ ! -d ".git" ]; then
+            echo "📥 Cloning repository..."
+            git clone https://github.com/DGBIZT/BookMoose.git .
+            git checkout feature/library || git checkout -b feature/library origin/feature/library
+          else
+            echo "📥 Pulling latest changes..."
+            git fetch origin
+            git checkout feature/library || git checkout -b feature/library origin/feature/library
+            git pull origin feature/library
+          fi
+          
+          echo "🛑 Stopping containers..."
           docker-compose down
+          
+          echo "🔨 Building new images..."
           docker-compose build --no-cache
+          
+          echo "▶️ Starting containers..."
           docker-compose up -d
+          
+          echo "⏳ Waiting for services to be ready..."
+          sleep 10
+          
+          echo "📊 Applying database migrations..."
+          docker-compose exec -T web python manage.py migrate --noinput || echo "⚠️ Migration failed, but continuing..."
+          
+          echo "🧹 Cleaning up unused Docker resources..."
           docker system prune -f
+          
+          echo "✅ Checking container status..."
+          docker-compose ps
+          
           echo "🚀 Application deployed successfully!"
